@@ -1,0 +1,159 @@
+<?xml version="1.0"?>
+<!DOCTYPE HPCToolkitStructure [
+<!-- ******************************************************************** -->
+<!-- HPCToolkit Structure DTD                                             -->
+<!-- Version 4.7                                                          -->
+<!-- ******************************************************************** -->
+
+<!ELEMENT HPCToolkitStructure (LM)*>
+<!ATTLIST HPCToolkitStructure
+	version CDATA #REQUIRED
+	i       CDATA #REQUIRED
+	n       CDATA #IMPLIED>
+  <!-- Load module: -->
+  <!--   (i)d: unique identifier for cross referencing -->
+  <!--   (n)ame -->
+  <!--   (l)ine range: "beg-end" (inclusive range) -->
+  <!--   (v)ma-range-set: "{[beg-end), [beg-end)...}" -->
+  <!--   (t)arget: target function address -->
+  <!--   (d)evice: device name -->
+  <!ELEMENT LM (F|P)*>
+  <!ATTLIST LM
+	i CDATA #REQUIRED
+	n CDATA #REQUIRED
+	v CDATA #IMPLIED>
+  <!-- File: -->
+  <!ELEMENT F (P|L|S)*>
+  <!ATTLIST F
+	i CDATA #REQUIRED
+	n CDATA #REQUIRED>
+  <!-- Procedure: ln=link name (if different than name) -->
+  <!ELEMENT P (P|A|L|S|C)*>
+  <!ATTLIST P
+	i  CDATA #REQUIRED
+	n  CDATA #REQUIRED
+	ln CDATA #IMPLIED
+	l  CDATA #IMPLIED
+	s  CDATA #IMPLIED
+	v  CDATA #IMPLIED>
+  <!-- Alien: (f)ilename -->
+  <!ELEMENT A (A|L|S|C)*>
+  <!ATTLIST A
+	i CDATA #REQUIRED
+	f CDATA #IMPLIED
+	n CDATA #IMPLIED
+	ln CDATA #IMPLIED
+	l CDATA #IMPLIED
+	v CDATA #IMPLIED>
+  <!-- Loop -->
+  <!ELEMENT L (A|L|S|C)*>
+  <!ATTLIST L
+	i CDATA #REQUIRED
+	l CDATA #REQUIRED
+	f CDATA #IMPLIED
+	v CDATA #IMPLIED>
+  <!-- Statement -->
+  <!ELEMENT S EMPTY>
+  <!ATTLIST S
+	i CDATA #REQUIRED
+	l CDATA #REQUIRED
+	v CDATA #IMPLIED>
+  <!-- Callsite (a special Statement) -->
+  <!ELEMENT C (C)*>
+  <!ATTLIST C
+	i CDATA #REQUIRED
+	l CDATA #REQUIRED
+	v CDATA #IMPLIED
+	t CDATA #IMPLIED
+	d CDATA #IMPLIED>
+]>
+<HPCToolkitStructure i="0" version="4.7" n="">
+<LM i="2" n="/home/dx4/tools/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks/conv2d" v="{}">
+  <F i="3" n="/home/dx4/tools/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks/conv2d.c">
+    <P i="4" n="main" l="119" v="{[0x4004f0-0x4004f1)}">
+      <S i="5" l="119" v="{[0x4004f0-0x4004f1) [0x4004f6-0x4004fa)}"/>
+      <S i="6" l="120" v="{[0x4004ff-0x400507)}"/>
+      <S i="7" l="122" v="{[0x4004f1-0x4004f6) [0x4004fa-0x4004ff) [0x40050c-0x400513) [0x400518-0x400520) [0x40052f-0x400536) [0x40053b-0x400588)}"/>
+      <S i="8" l="125" v="{[0x40058d-0x400595)}"/>
+      <C i="9" l="122" v="{[0x400507-0x40050c)}" t="0x400690" d=""/>
+      <C i="10" l="122" v="{[0x400513-0x400518)}" t="0x4004e0" d=""/>
+      <C i="11" l="122" v="{[0x400536-0x40053b)}" t="0x4004e0" d=""/>
+      <C i="12" l="122" v="{[0x400588-0x40058d)}" t="0x4004d0" d=""/>
+      <L i="13" l="122" f="/home/dx4/tools/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks/conv2d.c" v="{[0x400520-0x400521)}">
+        <S i="14" l="122" v="{[0x400520-0x400525) [0x40052a-0x40052f)}"/>
+        <C i="15" l="122" v="{[0x400525-0x40052a)}" t="0x400690" d=""/>
+      </L>
+    </P>
+    <P i="16" n="conv2d" l="95" v="{[0x400690-0x400691)}">
+      <S i="17" l="95" v="{[0x400690-0x4006ae)}"/>
+      <S i="18" l="116" v="{[0x400999-0x4009a1) [0x4009a2-0x4009a5)}"/>
+      <S i="19" l="117" v="{[0x4009a1-0x4009a2) [0x4009a5-0x4009a9)}"/>
+      <L i="20" l="97" f="/home/dx4/tools/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks/conv2d.c" v="{[0x4006ae-0x4006af)}">
+        <S i="21" l="97" v="{[0x400982-0x400999)}"/>
+        <S i="22" l="99" v="{[0x4006ae-0x4006b5)}"/>
+        <S i="23" l="104" v="{[0x4006b5-0x4006b8)}"/>
+        <L i="24" l="99" f="/home/dx4/tools/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks/conv2d.c" v="{[0x4006b8-0x4006b9)}">
+          <S i="25" l="95" v="{[0x4006bd-0x4006c0)}"/>
+          <S i="26" l="99" v="{[0x40096e-0x400982)}"/>
+          <S i="27" l="100" v="{[0x4006b8-0x4006bd)}"/>
+          <L i="28" l="100" f="/home/dx4/tools/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks/conv2d.c" v="{[0x4006c0-0x4006c1)}">
+            <S i="29" l="95" v="{[0x4006c0-0x4006ca)}"/>
+            <S i="30" l="100" v="{[0x400961-0x40096e)}"/>
+            <S i="31" l="104" v="{[0x4006ca-0x4006cc) [0x400955-0x400961)}"/>
+            <L i="32" l="104" f="/home/dx4/tools/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks/conv2d.c" v="{[0x4006cc-0x4006cd)}">
+              <S i="33" l="104" v="{[0x4006cc-0x4006cf) [0x40094c-0x400955)}"/>
+              <S i="34" l="108" v="{[0x4006cf-0x40094c)}"/>
+            </L>
+          </L>
+        </L>
+      </L>
+    </P>
+  </F>
+  <F i="35" n="&lt;unknown file&gt; [conv2d]">
+    <P i="36" n="_init" l="0" v="{[0x4004a0-0x4004a1)}">
+      <S i="37" l="0" v="{[0x4004a0-0x4004b4) [0x4004b6-0x4004bb)}"/>
+      <C i="38" l="0" v="{[0x4004b4-0x4004b6)}" d=""/>
+    </P>
+    <P i="39" n="printf@plt" l="0" v="{[0x4004d0-0x4004d1)}">
+      <S i="40" l="0" v="{[0x4004d0-0x4004e0)}"/>
+    </P>
+    <P i="41" n="gettimeofday@plt" l="0" v="{[0x4004e0-0x4004e1)}">
+      <S i="42" l="0" v="{[0x4004e0-0x4004f0)}"/>
+    </P>
+    <P i="43" n="_start" l="0" v="{[0x4005a0-0x4005a1)}">
+      <S i="44" l="0" v="{[0x4005a0-0x4005c8) [0x4005ce-0x4005cf)}"/>
+      <C i="45" l="0" v="{[0x4005c8-0x4005ce)}" d=""/>
+    </P>
+    <P i="46" n="_dl_relocate_static_pie" l="0" v="{[0x4005d0-0x4005d1)}">
+      <S i="47" l="0" v="{[0x4005d0-0x4005d5)}"/>
+    </P>
+    <P i="48" n="deregister_tm_clones" l="0" v="{[0x4005e0-0x4005e1)}">
+      <S i="49" l="0" v="{[0x4005e0-0x400610)}"/>
+    </P>
+    <P i="50" n="register_tm_clones" l="0" v="{[0x400610-0x400611)}">
+      <S i="51" l="0" v="{[0x400610-0x400650)}"/>
+    </P>
+    <P i="52" n="__do_global_dtors_aux" l="0" v="{[0x400650-0x400651)}">
+      <S i="53" l="0" v="{[0x400650-0x400661) [0x400666-0x400680)}"/>
+      <C i="54" l="0" v="{[0x400661-0x400666)}" t="0x4005e0" d=""/>
+    </P>
+    <P i="55" n="frame_dummy" l="0" v="{[0x400680-0x400681)}">
+      <S i="56" l="0" v="{[0x400680-0x400690)}"/>
+    </P>
+    <P i="57" n="__libc_csu_init" l="0" v="{[0x4009b0-0x4009b1)}">
+      <S i="58" l="0" v="{[0x4009b0-0x4009dc) [0x4009e1-0x4009f0) [0x400a06-0x400a15)}"/>
+      <C i="59" l="0" v="{[0x4009dc-0x4009e1)}" t="0x4004a0" d=""/>
+      <L i="60" l="0" f="&lt;unknown file&gt; [conv2d]" v="{[0x4009f0-0x4009f1)}">
+        <S i="61" l="0" v="{[0x4009f0-0x4009f9) [0x4009fd-0x400a06)}"/>
+        <C i="62" l="0" v="{[0x4009f9-0x4009fd)}" d=""/>
+      </L>
+    </P>
+    <P i="63" n="__libc_csu_fini" l="0" v="{[0x400a20-0x400a21)}">
+      <S i="64" l="0" v="{[0x400a20-0x400a25)}"/>
+    </P>
+    <P i="65" n="_fini" l="0" v="{[0x400a28-0x400a29)}">
+      <S i="66" l="0" v="{[0x400a28-0x400a35)}"/>
+    </P>
+  </F>
+</LM>
+</HPCToolkitStructure>
