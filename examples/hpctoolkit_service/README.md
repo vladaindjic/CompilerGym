@@ -15,7 +15,7 @@ issue](https://github.com/facebookresearch/CompilerGym/issues/new/choose).
 
 ## Features
 
-* A action space consisits of nvcc PTX optimizations: `["-O0", "-O1", "-O2"]`. The action space
+* A action space consisits of LLVM optimizations: `["-O0", "-O1", "-O2"]`. The action space
   never changes. Actions never end the episode.
 * There are one observation spaces:
   * `runtime` which returns the float value.

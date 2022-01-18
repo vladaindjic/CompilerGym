@@ -120,7 +120,7 @@ def test_reward_before_reset(env: CompilerEnv):
 def test_reset_invalid_benchmark(env: CompilerEnv):
     """Test requesting a specific benchmark."""
     with pytest.raises(LookupError) as ctx:
-        env.reset(benchmark="gpukernels-v0/foobar")
+        env.reset(benchmark="hpctoolkit-llvm-v0/foobar")
     assert str(ctx.value) == "Unknown program name"
 
 
@@ -211,8 +211,8 @@ def test_rewards(env: CompilerEnv):
 
 def test_benchmarks(env: CompilerEnv):
     assert list(env.datasets.benchmark_uris()) == [
-        "benchmark://gpukernels-v0/foo",
-        "benchmark://gpukernels-v0/bar",
+        "benchmark://hpctoolkit-llvm-v0/foo",
+        "benchmark://hpctoolkit-llvm-v0/bar",
     ]
 
 

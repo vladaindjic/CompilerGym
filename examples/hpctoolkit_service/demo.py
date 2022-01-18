@@ -23,7 +23,7 @@ def main():
     # Create the environment using the regular gym.make(...) interface. We could
     # use either the C++ service "hpctoolkit-cc-v0" or the Python service
     # "hpctoolkit-py-v0".
-    with gym.make("gpukernels-v0") as env:
+    with gym.make("hpctoolkit-llvm-v0") as env:
         env.reset()
         for _ in range(20):
             observation, reward, done, info = env.step(env.action_space.sample())

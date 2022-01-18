@@ -24,8 +24,8 @@ class RuntimeReward(Reward):
 
     def __init__(self):
         super().__init__(
-            id="hatchet",
-            observation_spaces=["hatchet"],
+            id="runtime",
+            observation_spaces=["runtime"],
             default_value=0,
             default_negates_returns=True,
             deterministic=False,
@@ -58,23 +58,56 @@ class RuntimeReward(Reward):
         self.previous_runtime = observations[0]
         return reward
 
+class HPCToolkitReward(Reward):
+    """An example reward that uses changes in the "runtime" observation value
+    to compute incremental reward.
+    """
+
+    def __init__(self):
+        super().__init__(
+            id="hpctoolkit",
+            observation_spaces=["hpctoolkit"],
+            default_value=0,
+            default_negates_returns=True,
+            deterministic=False,
+            platform_dependent=True,
+        )
+        self.previous_runtime = None
+
+    def reset(self, benchmark: str, observation_view):
+        del benchmark  # unused
+        self.previous_runtime = None
+
+    def update(self, action, observations, observation_view):
+        del action
+        del observation_view
+        pdb.set_trace()
+
+        if self.previous_runtime is None:
+            self.previous_runtime = observations[0]
+        reward = float(self.previous_runtime - observations[0])
+        self.previous_runtime = observations[0]
+        return reward
+
+
+
 
 class HPCToolkitDataset(Dataset):
     def __init__(self, *args, **kwargs):
         super().__init__(
-            name="benchmark://gpukernels-v0",
+            name="benchmark://hpctoolkit-cpu-v0",
             license="MIT",
-            description="An example of gpu kernel dataset",
+            description="HPCToolkit cpu dataset",
             site_data_base=site_data_path("example_dataset"),
         )
         self._benchmarks = {
-            # "benchmark://gpukernels-v0/cuda-driver": Benchmark.from_file_contents(
-            #     "benchmark://gpukernels-v0/cuda-driver",
-            #     self.preprocess(BENCHMARKS_PATH / "vecSet1.cu"),
-            # ),
-            "benchmark://gpukernels-v0/cuda-runtime": Benchmark.from_file(
-                "benchmark://gpukernels-v0/cuda-runtime",
-                BENCHMARKS_PATH / "cuda-runtime/main.cu",
+            "benchmark://hpctoolkit-cpu-v0/offsets1": Benchmark.from_file_contents(
+                "benchmark://hpctoolkit-cpu-v0/offsets1",
+                self.preprocess(BENCHMARKS_PATH / "offsets1.c"),
+            ),
+            "benchmark://hpctoolkit-cpu-v0/conv2d": Benchmark.from_file_contents(
+                "benchmark://hpctoolkit-cpu-v0/conv2d",
+                self.preprocess(BENCHMARKS_PATH / "conv2d.c"),
             ),
         }
 
@@ -89,11 +122,11 @@ class HPCToolkitDataset(Dataset):
 
 
 register(
-    id="hpctoolkit-gpukernels",
+    id="hpctoolkit-llvm",
     entry_point="compiler_gym.envs:CompilerEnv",
     kwargs={
         "service": HPCTOOLKIT_PY_SERVICE_BINARY,
-        "rewards": [RuntimeReward()],
+        "rewards": [RuntimeReward(), HPCToolkitReward()],
         "datasets": [HPCToolkitDataset()],
     },
 )
