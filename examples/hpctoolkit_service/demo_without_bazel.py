@@ -87,7 +87,7 @@ class HPCToolkitReward(Reward):
 
     def reset(self, benchmark: str, observation_view):
         print("Reward HPCToolkit: reset")
-        pdb.set_trace()
+        # pdb.set_trace()
         del benchmark  # unused
         unpickled_cct = observation_view["hpctoolkit"]
         gf = pickle.loads(unpickled_cct)
@@ -96,7 +96,7 @@ class HPCToolkitReward(Reward):
 
     def update(self, action, observations, observation_view):
         print("Reward HPCToolkit: update")
-        pdb.set_trace()
+        # pdb.set_trace()
         del action
         del observation_view
 
