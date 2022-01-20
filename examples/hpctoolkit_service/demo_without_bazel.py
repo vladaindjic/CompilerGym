@@ -17,8 +17,8 @@ import subprocess
 from pathlib import Path
 from typing import Iterable
 
-import pdb
 import gym
+import hatchet as ht
 
 from compiler_gym.datasets import Benchmark, Dataset
 from compiler_gym.spaces import Reward
@@ -26,8 +26,7 @@ from compiler_gym.util.logging import init_logging
 from compiler_gym.util.registration import register
 from compiler_gym.util.runfiles_path import runfiles_path, site_data_path
 
-import hatchet as ht
-
+reward_metric = "REALTIME (sec) (I)"  # "time (inc)"
 
 
 HPCTOOLKIT_PY_SERVICE_BINARY: Path = Path(
@@ -36,7 +35,9 @@ HPCTOOLKIT_PY_SERVICE_BINARY: Path = Path(
 assert HPCTOOLKIT_PY_SERVICE_BINARY.is_file(), "Service script not found"
 
 # BENCHMARKS_PATH: Path = runfiles_path("examples/hpctoolkit_service/benchmarks")
-BENCHMARKS_PATH: Path = "/home/dx4/tools/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks"
+BENCHMARKS_PATH: Path = (
+    "/home/dx4/tools/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks"
+)
 
 
 class RuntimeReward(Reward):
@@ -66,10 +67,12 @@ class RuntimeReward(Reward):
         del observation_view
         return float(self.baseline_runtime - observations[0]) / self.baseline_runtime
 
+
 class HPCToolkitReward(Reward):
     """An example reward that uses changes in the "runtime" observation value
     to compute incremental reward.
     """
+
     def __init__(self):
         super().__init__(
             id="hpctoolkit",
@@ -89,8 +92,7 @@ class HPCToolkitReward(Reward):
         unpickled_cct = observation_view["hpctoolkit"]
         gf = pickle.loads(unpickled_cct)
         self.baseline_cct = gf
-        self.baseline_runtime = gf.dataframe['time (inc)'][0]
-        
+        self.baseline_runtime = gf.dataframe[reward_metric][0]
 
     def update(self, action, observations, observation_view):
         print("Reward HPCToolkit: update")
@@ -99,7 +101,7 @@ class HPCToolkitReward(Reward):
         del observation_view
 
         gf = pickle.loads(observations[0])
-        new_runtime = gf.dataframe['time (inc)'][0]
+        new_runtime = gf.dataframe[reward_metric][0]
         return float(self.baseline_runtime - new_runtime) / self.baseline_runtime
 
 
@@ -146,7 +148,6 @@ register(
 )
 
 
-
 def main():
     # Use debug verbosity to print out extra logging information.
     init_logging(level=logging.DEBUG)
@@ -166,8 +167,7 @@ def main():
             print(info)
             gf = pickle.loads(observation[0])
             print(gf.dataframe)
-            print(gf.tree(metric_column="time (inc)"))  
-
+            print(gf.tree(metric_column=reward_metric))
 
             pdb.set_trace()
             if done:

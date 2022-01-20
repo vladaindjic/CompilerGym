@@ -8,16 +8,15 @@
 import logging
 import os
 import pdb
+import pickle
 import shutil
 import subprocess
-import pickle
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+import hatchet as ht
 import numpy as np
 import utils
-import hatchet as ht
-
 
 import compiler_gym.third_party.llvm as llvm
 from compiler_gym.service import CompilationSession
@@ -37,7 +36,7 @@ from compiler_gym.service.runtime import create_and_run_compiler_gym_service
 from compiler_gym.util.commands import run_command
 
 
-def parseHPCToolkit(db_path: str)-> ht.GraphFrame:
+def parseHPCToolkit(db_path: str) -> ht.GraphFrame:
 
     # Use hatchet's ``from_hpctoolkit`` API to read in the HPCToolkit database.
     # The result is stored into Hatchet's GraphFrame.
@@ -49,25 +48,22 @@ class HPCToolkitCompilationSession(CompilationSession):
 
     compiler_version: str = "1.0.0"
 
-    # The action spaces supported by this service. Here we will implement a
-    # single action space, called "default", that represents a command line with
-    # three options: "a", "b", and "c".
     action_spaces = [
-        ActionSpace(
-            name="gcc",
-            choice=[
-                ChoiceSpace(
-                    name="optimization_choice",
-                    named_discrete_space=NamedDiscreteSpace(
-                        value=[
-                            "-O0",
-                            "-O1",
-                            "-O2",
-                        ],
-                    ),
-                )
-            ],
-        ),
+        # ActionSpace(
+        #     name="gcc",
+        #     choice=[
+        #         ChoiceSpace(
+        #             name="optimization_choice",
+        #             named_discrete_space=NamedDiscreteSpace(
+        #                 value=[
+        #                     "-O0",
+        #                     "-O1",
+        #                     "-O2",
+        #                 ],
+        #             ),
+        #         )
+        #     ],
+        # ),
         ActionSpace(
             name="llvm",
             choice=[
@@ -82,7 +78,7 @@ class HPCToolkitCompilationSession(CompilationSession):
                     ),
                 )
             ],
-        ),                    
+        ),
     ]
 
     # A list of observation spaces supported by this service. Each of these
@@ -101,7 +97,7 @@ class HPCToolkitCompilationSession(CompilationSession):
             name="hpctoolkit",
             binary_size_range=ScalarRange(
                 min=ScalarLimit(value=5), max=ScalarLimit(value=5)
-            ),        
+            ),
         ),
     ]
 
@@ -109,7 +105,7 @@ class HPCToolkitCompilationSession(CompilationSession):
         self,
         working_directory: Path,
         action_space: ActionSpace,
-        benchmark: Benchmark, #TODO: Dejan use Benchmark rather than hardcoding benchmark path here!
+        benchmark: Benchmark,  # TODO: Dejan use Benchmark rather than hardcoding benchmark path here!
         # use_custom_opt: bool = True,
     ):
         super().__init__(working_directory, action_space, benchmark)
@@ -128,7 +124,6 @@ class HPCToolkitCompilationSession(CompilationSession):
         self._obj_path = str(self.working_dir / "benchmark.o")
         self._exe_path = str(self.working_dir / "benchmark.exe")
 
-
         # Dump the benchmark source to disk.
         self._src_path = str(self.working_dir / "benchmark.c")
         with open(self.working_dir / "benchmark.c", "wb") as f:
@@ -136,25 +131,37 @@ class HPCToolkitCompilationSession(CompilationSession):
 
         self.benchmark_c_path: Path = "/home/dx4/tools/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks/conv2d.c"
         self.benchmark_c_exec: Path = "/home/dx4/tools/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks/conv2d"
+        self.benchmark_c_ll: Path = "/home/dx4/tools/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks/conv2d.ll"
+        self.benchmark_c_bc: Path = "/home/dx4/tools/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks/conv2d.bc"
+        self.benchmark_c_dir: Path = os.path.dirname(self.benchmark_c_path)
 
-        if action_space.name == "llvm":            
-            self.compile_c = [
-                self._clang,
-                "-g",                                
+        self.clang_cmd = [
+            [
+                "clang",
                 "-o",
-                self._exe_path,
-                self._src_path,
-            ]
+                self.benchmark_c_ll,
+                "-S",
+                "-emit-llvm",
+                self.benchmark_c_path,
+            ],
+            ["opt", "--debugify", "-o", self.benchmark_c_bc, self.benchmark_c_ll],
+            ["clang", self.benchmark_c_bc, "-o", self.benchmark_c_exec],
+        ]
+
+        if action_space.name == "llvm":
+            self.compile_c = self.clang_cmd
             self.compile_c_base = self.compile_c[:]
-            self.compile_c_base.insert(1, "-O0")
+            self.compile_c_base[0].insert(1, "-O0")
 
         elif action_space.name == "gcc":
             self.compile_c = [
-                "gcc",                
-                "-g",
-                "-o",
-                self.benchmark_c_exec,
-                self.benchmark_c_path,
+                [
+                    "gcc",
+                    "-g",
+                    "-o",
+                    self.benchmark_c_exec,
+                    self.benchmark_c_path,
+                ]
             ]
             self.compile_c_base = self.compile_c[:]
             self.compile_c_base.insert(1, "-O0")
@@ -162,23 +169,34 @@ class HPCToolkitCompilationSession(CompilationSession):
             print("Action space is doesn't exits: ", action_space)
             exit
 
-        # stdout = run_command(
-        #     [self._clang, "--version"],
+        # Clean benchmark directory
+
+        # clean_ben_dir_com = [
+        #     "rm",
+        #     "-rf",
+        #     self.benchmark_c_dir +"/db",
+        #     self.benchmark_c_dir +"/m",
+        #     self.benchmark_c_dir +"/*.hpcstruct",
+        #     self.benchmark_c_exec,
+        #     ]
+
+        # pdb.set_trace()
+        # print(clean_ben_dir_com)
+        # run_command(
+        #     clean_ben_dir_com,
         #     timeout=30,
         # )
-        # print(stdout)
-        # pdb.set_trace()
 
-        stdout = run_command(
-            self.compile_c_base,
-            timeout=30,
-        )
-        print(stdout)
+        for cmd in self.compile_c_base:
+            stdout = run_command(
+                cmd,
+                timeout=30,
+            )
+            print(stdout)
 
-        self.run_c = [ self.benchmark_c_exec ]
+        self.run_c = [self.benchmark_c_exec]
         print(self.compile_c)
         pdb.set_trace()
-        
 
     def apply_action(self, action: Action) -> Tuple[bool, Optional[ActionSpace], bool]:
 
@@ -202,37 +220,32 @@ class HPCToolkitCompilationSession(CompilationSession):
             choice_index,
             opt,
         )
-        self.compile_c.insert(1, opt)
+        self.compile_c[0].insert(1, opt)
 
         # Compile with action (gcc, llvm)
         # os.chdir(os.path.dirname(self.benchmark_c_path))
 
+        for cmd in self.compile_c:
+            run_command(
+                cmd,
+                timeout=30,
+            )
 
-        run_command(
-            self.compile_c,
-            timeout=30,
-        )
-
-
-        
         # TODO: Dejan properly implement these
         action_had_no_effect = False
         end_of_session = False
         new_action_space = None
         return (end_of_session, new_action_space, action_had_no_effect)
 
-
     def get_observation(self, observation_space: ObservationSpace) -> Observation:
         # #pdb.set_trace()
         logging.info("Computing observation from space %s", observation_space.name)
 
-
         if observation_space.name == "runtime":
             print("get_observation: runtime")
             pdb.set_trace()
-            
-            # os.chdir(os.path.dirname(self.benchmark_c_path))
 
+            # os.chdir(os.path.dirname(self.benchmark_c_path))
 
             # TODO: add documentation that benchmarks need print out execution time
             # Running 5 times and taking the average of middle 3
@@ -257,19 +270,25 @@ class HPCToolkitCompilationSession(CompilationSession):
 
             return Observation(scalar_double=avg_exec_time)
 
-
-
         elif observation_space.name == "hpctoolkit":
             print("get_observation: hpctoolkit")
             pdb.set_trace()
             os.chdir(os.path.dirname(self.benchmark_c_path))
 
-            os.system(
-                "gcc -O3 -g -o " + self.benchmark_c_exec + " " + self.benchmark_c_path
-            )
+            # os.system(
+            #     "gcc -O3 -g -o " + self.benchmark_c_exec + " " + self.benchmark_c_path
+            # )
+
+            for cmd in self.clang_cmd:
+                print(cmd)
+                pdb.set_trace()
+                run_command(
+                    cmd,
+                    timeout=30,
+                )
 
             os.system("rm -rf m* db*")
-            os.system("hpcrun -o m " + self.benchmark_c_exec)
+            os.system("hpcrun -e REALTIME@100 -o m " + self.benchmark_c_exec)
             os.system("hpcstruct " + self.benchmark_c_exec)
             os.system(
                 "hpcprof-mpi -o db --metric-db yes -S "
@@ -278,7 +297,9 @@ class HPCToolkitCompilationSession(CompilationSession):
             )
 
             gf = parseHPCToolkit("db")
-            
+            print(gf.dataframe)
+            pdb.set_trace()
+
             pickled = pickle.dumps(gf)
             return Observation(binary_value=pickled)
 

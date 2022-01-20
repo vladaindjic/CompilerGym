@@ -67,7 +67,7 @@ float y[N][Oh][Ow][Oc];
 __attribute__((noinline))
 // template <N=32, Iw=...>#include <stdbool.h>
 #include <stdio.h>
-#include <sys/time.h>
+#include <time.h>
 
 /**
  * Warmup and then measure.
@@ -93,27 +93,34 @@ __attribute__((noinline))
     printf("%ld", mtime);                        \
   }
 void conv2d(int* ret) {
+  // TODO: Dejan added time sleep
+  // struct timespec ts = {1, 0};
+  struct timespec ts = {0, 0.1};
+
   // loop over output
-  for (int n = 0; n < N; n++) {
-    for (int oh = 0; oh < Oh; oh++) {
-      for (int ow = 0; ow < Ow; ow++) {
-        for (int oc = 0; oc < Oc; oc++) {
-          y[n][oh][ow][oc] = 0;
-// loop over filter
-#pragma unroll(Kh)
-          for (int kh = 0; kh < Kh; kh++) {
-            for (int kw = 0; kw < Kw; kw++) {
-              for (int ic = 0; ic < Iw; ic++) {
-                // TODO: include pad, stride, and dilation
-                y[n][oh][ow][oc] += w[oc][kh][kw][ic] * x[n][oh - kh + 1][ow - kw + 1][ic];
-              }
-            }
-          }
-        }
-      }
-    }
+  //   for (int n = 0; n < N; n++) {
+  //     for (int oh = 0; oh < Oh; oh++) {
+  //       for (int ow = 0; ow < Ow; ow++) {
+  //         for (int oc = 0; oc < Oc; oc++) {
+  //           y[n][oh][ow][oc] = 0;
+  // // loop over filter
+  // #pragma unroll(Kh)
+  //           for (int kh = 0; kh < Kh; kh++) {
+  //             for (int kw = 0; kw < Kw; kw++) {
+  for (int ic = 0; ic < Iw; ic++) {
+    // TODO: include pad, stride, and dilation
+    // y[n][oh][ow][oc] += w[oc][kh][kw][ic] * x[n][oh - kh + 1][ow - kw + 1][ic];
+    while (clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, &ts) != 0)
+      ;
   }
-  *ret = y[N - 1][Oh - 1][Ow - 1][Oc - 1];
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
+  // *ret = y[N - 1][Oh - 1][Ow - 1][Oc - 1];
+  *ret = 3;
 }
 
 __attribute__((optnone)) int main(int argc, char* argv[]) {
