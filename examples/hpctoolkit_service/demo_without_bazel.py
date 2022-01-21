@@ -20,11 +20,14 @@ from typing import Iterable
 import gym
 import hatchet as ht
 
+
 from compiler_gym.datasets import Benchmark, Dataset
+from compiler_gym.envs.llvm.llvm_benchmark import get_system_includes
 from compiler_gym.spaces import Reward
-from compiler_gym.util.logging import init_logging
+from compiler_gym.third_party import llvm
 from compiler_gym.util.registration import register
 from compiler_gym.util.runfiles_path import runfiles_path, site_data_path
+from compiler_gym.util.logging import init_logging
 
 reward_metric = "REALTIME (sec) (I)"  # "time (inc)"
 
@@ -39,6 +42,9 @@ BENCHMARKS_PATH: Path = (
     "/home/dx4/tools/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks"
 )
 
+NEURO_VECTORIZER_HEADER: Path = Path(
+    "/home/dx4/tools/CompilerGym/compiler_gym/third_party/neuro-vectorizer/header.h"
+)
 
 class RuntimeReward(Reward):
     """An example reward that uses changes in the "runtime" observation value
@@ -113,18 +119,56 @@ class HPCToolkitDataset(Dataset):
             description="HPCToolkit cpu dataset",
             site_data_base=site_data_path("example_dataset"),
         )
-        print(BENCHMARKS_PATH + "/offsets1.c")
+
+        # self._benchmarks = {
+        #     "benchmark://hpctoolkit-cpu-v0/offsets1": Benchmark.from_file(
+        #         "benchmark://hpctoolkit-cpu-v0/offsets1",
+        #         BENCHMARKS_PATH + "/offsets1.c",
+        #     ),            
+        #     "benchmark://hpctoolkit-cpu-v0/conv2d": Benchmark.from_file(
+        #         "benchmark://hpctoolkit-cpu-v0/conv2d",
+        #         BENCHMARKS_PATH + "/conv2d.c",
+        #     ),
+        # }
 
         self._benchmarks = {
-            "benchmark://hpctoolkit-cpu-v0/offsets1": Benchmark.from_file(
-                "benchmark://hpctoolkit-cpu-v0/offsets1",
-                BENCHMARKS_PATH + "/offsets1.c",
-            ),
-            "benchmark://hpctoolkit-cpu-v0/conv2d": Benchmark.from_file(
+            "benchmark://hpctoolkit-cpu-v0/conv2d": Benchmark.from_file_contents(
                 "benchmark://hpctoolkit-cpu-v0/conv2d",
-                BENCHMARKS_PATH + "/conv2d.c",
+                self.preprocess(BENCHMARKS_PATH + "/conv2d.c"),
             ),
+            "benchmark://hpctoolkit-cpu-v0/offsets1": Benchmark.from_file_contents(
+                "benchmark://hpctoolkit-cpu-v0/offsets1",
+                self.preprocess(BENCHMARKS_PATH + "/offsets1.c"),
+            ),     
+            "benchmark://hpctoolkit-cpu-v0/nanosleep": Benchmark.from_file_contents(
+                "benchmark://hpctoolkit-cpu-v0/nanosleep",
+                self.preprocess(BENCHMARKS_PATH + "/nanosleep.c"),
+            ),          
         }
+
+    @staticmethod
+    def preprocess(src: Path) -> bytes:
+        """Front a C source through the compiler frontend."""
+        # TODO(github.com/facebookresearch/CompilerGym/issues/325): We can skip
+        # this pre-processing, or do it on the service side, once support for
+        # multi-file benchmarks lands.
+        cmd = [
+            str(llvm.clang_path()),
+            "-E",
+            "-o",
+            "-",
+            "-I",
+            str(NEURO_VECTORIZER_HEADER.parent),
+            src,
+        ]
+        for directory in get_system_includes():
+            cmd += ["-isystem", str(directory)]
+        return subprocess.check_output(
+            cmd,
+            timeout=300,
+        )
+
+
 
     def benchmark_uris(self) -> Iterable[str]:
         yield from self._benchmarks.keys()
@@ -155,6 +199,11 @@ def main():
     # Create the environment using the regular gym.make(...) interface.
     with gym.make("hpctoolkit-llvm-v0") as env:
         env.reset()
+        # env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/offsets1")
+        # env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/conv2d")
+        env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/nanosleep")
+        
+
         for i in range(2):
             print("Main: step = ", i)
             observation, reward, done, info = env.step(
@@ -166,8 +215,8 @@ def main():
             # print(observation)
             print(info)
             gf = pickle.loads(observation[0])
-            print(gf.dataframe)
             print(gf.tree(metric_column=reward_metric))
+            print(gf.dataframe[['line', 'llvm_inst']])
 
             pdb.set_trace()
             if done:

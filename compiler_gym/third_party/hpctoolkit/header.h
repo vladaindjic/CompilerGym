@@ -24,7 +24,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <stdbool.h>
 #include <stdio.h>
-#include <sys/time.h>
+#include <time.h>
+
 
 /**
  * Warmup and then measure.

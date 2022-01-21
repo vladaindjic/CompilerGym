@@ -5,6 +5,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 """An example CompilerGym service in python."""
+from bdb import set_trace
 import logging
 import os
 import pdb
@@ -36,11 +37,34 @@ from compiler_gym.service.runtime import create_and_run_compiler_gym_service
 from compiler_gym.util.commands import run_command
 
 
-def parseHPCToolkit(db_path: Path) -> ht.GraphFrame:
+def parseHPCToolkit(db_path: str) -> ht.GraphFrame:
 
     # Use hatchet's ``from_hpctoolkit`` API to read in the HPCToolkit database.
     # The result is stored into Hatchet's GraphFrame.
-    return ht.GraphFrame.from_hpctoolkit(str(db_path))
+    return ht.GraphFrame.from_hpctoolkit(db_path)
+
+
+def extractInstStr(ll_path: str) -> list:
+    inst_list = []
+    inst_list.append("dummy")
+
+    with open(ll_path) as f:
+        for line in f.readlines():
+            if line[0:2] == '  ' and line[2] != ' ':
+                print(len(inst_list), str(line))
+                inst_list.append(str(line))    
+    return inst_list
+
+
+def addInstStrToDataframe(gf: ht.GraphFrame, ll_path: str) -> None:
+
+    inst_list = extractInstStr(ll_path)  
+
+    gf.dataframe["llvm_inst"] = ""
+
+    for i, inst_idx in enumerate(gf.dataframe["line"]):
+        if inst_idx < len(inst_list):
+            gf.dataframe["llvm_inst"][i] = inst_list[inst_idx]
 
 
 class HPCToolkitCompilationSession(CompilationSession):
@@ -140,6 +164,7 @@ class HPCToolkitCompilationSession(CompilationSession):
             print("Action space is doesn't exits: ", action_space)
             exit
 
+
         # Compile baseline at the beginning
         for cmd in self.compile_c_base:            
             run_command(
@@ -149,7 +174,6 @@ class HPCToolkitCompilationSession(CompilationSession):
             
 
         print(self.compile_c)
-        # pdb.set_trace()
 
     def apply_action(self, action: Action) -> Tuple[bool, Optional[ActionSpace], bool]:
 
@@ -238,7 +262,9 @@ class HPCToolkitCompilationSession(CompilationSession):
 
             # pdb.set_trace()
 
-            gf = parseHPCToolkit(self.working_dir/"db")
+            gf = parseHPCToolkit(str(self.working_dir/"db"))          
+            addInstStrToDataframe(gf, self._llvm_path)
+
             pickled = pickle.dumps(gf)
             return Observation(binary_value=pickled)
 
