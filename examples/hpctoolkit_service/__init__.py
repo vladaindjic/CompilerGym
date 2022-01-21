@@ -12,7 +12,14 @@ HPCTOOLKIT_PY_SERVICE_BINARY: Path = runfiles_path(
     "examples/hpctoolkit_service/service_py/compiler_gym-example-service-py"
 )
 
-BENCHMARKS_PATH: Path = runfiles_path("examples/hpctoolkit_service/benchmarks")
+BENCHMARKS_PATH: Path = runfiles_path(
+    "examples/hpctoolkit_service/benchmarks/cpu-benchmarks"
+)
+
+
+HPCTOOLKIT_HEADER: Path = runfiles_path(
+    "/home/dx4/tools/CompilerGym/compiler_gym/third_party/hpctoolkit/header.h"
+)
 
 import pdb
 
@@ -58,6 +65,7 @@ class RuntimeReward(Reward):
         self.previous_runtime = observations[0]
         return reward
 
+
 class HPCToolkitReward(Reward):
     """An example reward that uses changes in the "runtime" observation value
     to compute incremental reward.
@@ -88,8 +96,6 @@ class HPCToolkitReward(Reward):
         reward = float(self.previous_runtime - observations[0])
         self.previous_runtime = observations[0]
         return reward
-
-
 
 
 class HPCToolkitDataset(Dataset):

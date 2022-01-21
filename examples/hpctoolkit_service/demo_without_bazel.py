@@ -20,14 +20,13 @@ from typing import Iterable
 import gym
 import hatchet as ht
 
-
 from compiler_gym.datasets import Benchmark, Dataset
 from compiler_gym.envs.llvm.llvm_benchmark import get_system_includes
 from compiler_gym.spaces import Reward
 from compiler_gym.third_party import llvm
+from compiler_gym.util.logging import init_logging
 from compiler_gym.util.registration import register
 from compiler_gym.util.runfiles_path import runfiles_path, site_data_path
-from compiler_gym.util.logging import init_logging
 
 reward_metric = "REALTIME (sec) (I)"  # "time (inc)"
 
@@ -42,9 +41,10 @@ BENCHMARKS_PATH: Path = (
     "/home/dx4/tools/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks"
 )
 
-NEURO_VECTORIZER_HEADER: Path = Path(
-    "/home/dx4/tools/CompilerGym/compiler_gym/third_party/neuro-vectorizer/header.h"
+HPCTOOLKIT_HEADER: Path = Path(
+    "/home/dx4/tools/CompilerGym/compiler_gym/third_party/hpctoolkit/header.h"
 )
+
 
 class RuntimeReward(Reward):
     """An example reward that uses changes in the "runtime" observation value
@@ -124,7 +124,7 @@ class HPCToolkitDataset(Dataset):
         #     "benchmark://hpctoolkit-cpu-v0/offsets1": Benchmark.from_file(
         #         "benchmark://hpctoolkit-cpu-v0/offsets1",
         #         BENCHMARKS_PATH + "/offsets1.c",
-        #     ),            
+        #     ),
         #     "benchmark://hpctoolkit-cpu-v0/conv2d": Benchmark.from_file(
         #         "benchmark://hpctoolkit-cpu-v0/conv2d",
         #         BENCHMARKS_PATH + "/conv2d.c",
@@ -139,11 +139,11 @@ class HPCToolkitDataset(Dataset):
             "benchmark://hpctoolkit-cpu-v0/offsets1": Benchmark.from_file_contents(
                 "benchmark://hpctoolkit-cpu-v0/offsets1",
                 self.preprocess(BENCHMARKS_PATH + "/offsets1.c"),
-            ),     
+            ),
             "benchmark://hpctoolkit-cpu-v0/nanosleep": Benchmark.from_file_contents(
                 "benchmark://hpctoolkit-cpu-v0/nanosleep",
                 self.preprocess(BENCHMARKS_PATH + "/nanosleep.c"),
-            ),          
+            ),
         }
 
     @staticmethod
@@ -158,7 +158,7 @@ class HPCToolkitDataset(Dataset):
             "-o",
             "-",
             "-I",
-            str(NEURO_VECTORIZER_HEADER.parent),
+            str(HPCTOOLKIT_HEADER.parent),
             src,
         ]
         for directory in get_system_includes():
@@ -167,8 +167,6 @@ class HPCToolkitDataset(Dataset):
             cmd,
             timeout=300,
         )
-
-
 
     def benchmark_uris(self) -> Iterable[str]:
         yield from self._benchmarks.keys()
@@ -202,7 +200,6 @@ def main():
         # env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/offsets1")
         # env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/conv2d")
         env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/nanosleep")
-        
 
         for i in range(2):
             print("Main: step = ", i)
@@ -216,7 +213,7 @@ def main():
             print(info)
             gf = pickle.loads(observation[0])
             print(gf.tree(metric_column=reward_metric))
-            print(gf.dataframe[['line', 'llvm_inst']])
+            print(gf.dataframe[["line", "llvm_inst"]])
 
             pdb.set_trace()
             if done:

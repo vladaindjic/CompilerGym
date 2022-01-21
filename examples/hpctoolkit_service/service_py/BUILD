@@ -5,13 +5,17 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
 py_binary(
-    name = "compiler_gym-example-service-py",
+    name = "hpctoolkit-service-py",
     srcs = ["example_service.py"],
+    # data = [
+    #     "//examples/hpctoolkit_service/loop_unroller",
+    # ],
     main = "example_service.py",
     visibility = ["//visibility:public"],
     deps = [
         "//compiler_gym/service",
         "//compiler_gym/service/proto",
         "//compiler_gym/service/runtime",
+        "//compiler_gym/third_party/llvm",
     ],
 )

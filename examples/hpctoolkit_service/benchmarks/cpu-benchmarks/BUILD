@@ -4,8 +4,9 @@
 # LICENSE file in the root directory of this source tree.
 
 filegroup(
-    name = "benchmarks",
-    srcs = glob(["*.cu"]),
+    name = "cpu-benchmarks",
+    srcs = glob(["*.c"]) + [
+        "//compiler_gym/third_party/hpctoolkit:header",
     ],
     visibility = ["//visibility:public"],
 )
