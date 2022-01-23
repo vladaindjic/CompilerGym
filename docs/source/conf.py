@@ -66,7 +66,7 @@ exclude_patterns = []
 html_theme = "sphinx_rtd_theme"
 
 html_theme_options = {
-    "analytics_id": "G-T95G5EVYXM",
+    "analytics_id": "G-WJN2CKJJKH",
     "collapse_navigation": True,
     "display_version": True,
     "logo_only": True,
@@ -79,6 +79,8 @@ html_css_files = [
 html_static_path = ["_static"]
 
 html_logo = "_static/img/logo.png"
+
+html_favicon = "_static/img/favicon.png"
 
 # -- Breathe configuration -
 
