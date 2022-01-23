@@ -20,7 +20,8 @@ from typing import Iterable
 import gym
 import hatchet as ht
 
-from compiler_gym.datasets import Benchmark, Dataset
+from compiler_gym.datasets import Benchmark, Dataset, BenchmarkUri
+from compiler_gym.envs.llvm.datasets import CBenchDataset, CBenchLegacyDataset2, CBenchLegacyDataset
 from compiler_gym.envs.llvm.llvm_benchmark import get_system_includes
 from compiler_gym.spaces import Reward
 from compiler_gym.third_party import llvm
@@ -38,11 +39,11 @@ assert HPCTOOLKIT_PY_SERVICE_BINARY.is_file(), "Service script not found"
 
 # BENCHMARKS_PATH: Path = runfiles_path("examples/hpctoolkit_service/benchmarks")
 BENCHMARKS_PATH: Path = (
-    "/home/dx4/tools/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks"
+    "/home/vi3/CompilerGym/examples/hpctoolkit_service/benchmarks/cpu-benchmarks"
 )
 
 HPCTOOLKIT_HEADER: Path = Path(
-    "/home/dx4/tools/CompilerGym/compiler_gym/third_party/hpctoolkit/header.h"
+    "/home/vi3/CompilerGym/compiler_gym/third_party/hpctoolkit/header.h"
 )
 
 
@@ -177,6 +178,9 @@ class HPCToolkitDataset(Dataset):
         else:
             raise LookupError("Unknown program name")
 
+    def benchmark_from_parsed_uri(self, uri: BenchmarkUri) -> Benchmark:
+        # TODO: IMPORTANT
+        return self.benchmark(str(uri))
 
 # Register the environment for use with gym.make(...).
 register(
@@ -184,7 +188,9 @@ register(
     entry_point="compiler_gym.envs:CompilerEnv",
     kwargs={
         "service": HPCTOOLKIT_PY_SERVICE_BINARY,
-        "rewards": [RuntimeReward(), HPCToolkitReward()],
+        # "rewards": [RuntimeReward(), HPCToolkitReward()],
+        "rewards": [RuntimeReward()],
+        # "datasets": [HPCToolkitDataset(), CBenchLegacyDataset2(site_data_path("llvm-v0"))],
         "datasets": [HPCToolkitDataset()],
     },
 )
@@ -196,26 +202,29 @@ def main():
 
     # Create the environment using the regular gym.make(...) interface.
     with gym.make("hpctoolkit-llvm-v0") as env:
-        env.reset()
+        # pdb.set_trace()
+        # env.reset()
         # env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/offsets1")
         # env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/conv2d")
+        # pdb.set_trace()
         env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/nanosleep")
+        # env.reset(benchmark="benchmark://cbench-v1/qsort")
 
         for i in range(2):
             print("Main: step = ", i)
             observation, reward, done, info = env.step(
                 action=env.action_space.sample(),
-                observations=["hpctoolkit"],
-                rewards=["hpctoolkit"],
+                observations=["runtime"],
+                rewards=["runtime"],
             )
             print(reward)
             # print(observation)
             print(info)
-            gf = pickle.loads(observation[0])
-            print(gf.tree(metric_column=reward_metric))
-            print(gf.dataframe[["line", "llvm_inst"]])
+            # gf = pickle.loads(observation[0])
+            # print(gf.tree(metric_column=reward_metric))
+            # print(gf.dataframe[["line", "llvm_inst"]])
 
-            pdb.set_trace()
+            # pdb.set_trace()
             if done:
                 env.reset()
 

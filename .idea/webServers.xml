@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="7ba49b9a-520f-4aaf-b4bb-7d3ee91c3631" name="ufront.cs">
+        <fileTransfer rootFolder="/home/vi3" accessType="SFTP" host="ufront.cs.rice.edu" port="22" sshConfigId="57030973-0b28-4369-97af-35d44916cf4d" sshConfig="vi3@ufront.cs.rice.edu:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

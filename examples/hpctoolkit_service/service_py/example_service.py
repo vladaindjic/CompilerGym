@@ -20,6 +20,7 @@ import numpy as np
 import utils
 
 import compiler_gym.third_party.llvm as llvm
+from compiler_gym import site_data_path
 from compiler_gym.service import CompilationSession
 from compiler_gym.service.proto import (
     Action,
@@ -124,6 +125,7 @@ class HPCToolkitCompilationSession(CompilationSession):
 
         # Resolve the paths to LLVM binaries once now.
         self._clang = str(llvm.clang_path())
+        self._llvm_dis = str(llvm.llvm_dis_path())
         self._llc = str(llvm.llc_path())
         self._llvm_diff = str(llvm.llvm_diff_path())
         self._opt = str(llvm.opt_path())
@@ -131,28 +133,69 @@ class HPCToolkitCompilationSession(CompilationSession):
         self._llvm_path = str(self.working_dir / "benchmark.ll")
         self._llvm_before_path = str(self.working_dir / "benchmark.previous.ll")
         self._bc_path = str(self.working_dir / "benchmark.bc")
+        # vi3: Used only if the benchmark is downloaded in .bc format.
+        self._bc_download_path = str(self.working_dir / "benchmark-downloaded.bc")
         self._exe_path = str(self.working_dir / "benchmark.exe")
         self._exe_struct_path = self._exe_path + ".hpcstruct"
 
         # Dump the benchmark source to disk.
         self._src_path = str(self.working_dir / "benchmark.c")
-        with open(self.working_dir / "benchmark.c", "wb") as f:
-            f.write(benchmark.program.contents)
 
+        self._running_cbench = False
 
-        # Set run commands
-        self.run_c = [self._exe_path]
+        if benchmark.program.contents.startswith(b'BC'):
+            self._running_cbench = True
+            # write bitcode representation
+            with open(self._bc_download_path, 'wb') as f:
+                f.write(benchmark.program.contents)
+            # generate .ll from .bc (bitcode) by using llvm-dis
+            self.compile_c = [
+                [self._llvm_dis, "-o", self._llvm_path, self._bc_download_path],
+                [self._opt, "--debugify", "-o", self._bc_path, self._llvm_path],
+                # for qsort, we need to link math library
+                # FIXME: This is hardcoded for cbench-v1/qsort.
+                [self._clang, self._bc_path, "-o", self._exe_path, '-lm']
+            ]
+            # FIXME: This is hardcoded for cbench-v1/qsort.
+            # data for qsort
+            qsort_input_data = site_data_path("llvm-v0/cbench-v1-runtime-data/runtime_data") / "automotive_qsort_data" / "1.dat"
+            qsort_output_data = self.working_dir / "sourted_output.dat"
+            self.run_c = [self._exe_path, str(qsort_input_data), str(qsort_output_data)]
+            # cBench benchmarks expect that a file _finfo_dataset exists in the
+            # current working directory and contains the number of benchmark
+            # iterations in it.
+            with open(self.working_dir / "_finfo_dataset", "w") as f:
+                print(1, file=f)
+
+            # For more info how to run other benchmarks, see this.
+            # from compiler_gym.envs.llvm.datasets.cbench import validator
+            # pdb.set_trace()
+            # validator(
+            #     benchmark="benchmark://cbench-v1/qsort",
+            #     cmd=f"$BIN $D/automotive_qsort_data/1.dat",
+            #     data=[f"automotive_qsort_data/1.dat"],
+            #     outs=["sorted_output.dat"],
+            #     linkopts=["-lm"],
+            # )
+
+        else:
+            with open(self.working_dir / "benchmark.c", "wb") as f:
+                f.write(benchmark.program.contents)
+            # generate .ll from .c (source code)
+            # vi3: Is problem if -O0 is supplied here?
+            self.compile_c = [
+                [self._clang, "-O0", "-o", self._llvm_path, "-S", "-emit-llvm", self._src_path],
+                [self._opt, "--debugify", "-o", self._bc_path, self._llvm_path],
+                [self._clang, self._bc_path, "-o", self._exe_path]
+            ]
+            # Set run commands
+            self.run_c = [self._exe_path]
 
         # Set compile commands
         if action_space.name == "llvm":
-            self.compile_c = [
-                [self._clang,"-o", self._llvm_path, "-S", "-emit-llvm", self._src_path],
-                [self._opt, "--debugify", "-o", self._bc_path, self._llvm_path],
-                [self._clang, self._bc_path, "-o", self._exe_path],
-            ]
-
             self.compile_c_base = self.compile_c[:]
-            self.compile_c_base[0].insert(1, "-O0")
+            # vi3: I'm not sure if we need this for .ll generated from .bc by using llvm-dis.
+            # self.compile_c_base[0].insert(1, "-O0")
 
         elif action_space.name == "gcc":
             self.compile_c = [
@@ -164,7 +207,7 @@ class HPCToolkitCompilationSession(CompilationSession):
             print("Action space is doesn't exits: ", action_space)
             exit
 
-
+        pdb.set_trace()
         # Compile baseline at the beginning
         for cmd in self.compile_c_base:            
             run_command(
@@ -172,7 +215,7 @@ class HPCToolkitCompilationSession(CompilationSession):
                 timeout=30,
             )
             
-
+        pdb.set_trace()
         print(self.compile_c)
 
     def apply_action(self, action: Action) -> Tuple[bool, Optional[ActionSpace], bool]:
@@ -185,7 +228,6 @@ class HPCToolkitCompilationSession(CompilationSession):
         choice_index = action.choice[0].named_discrete_value_index
         if choice_index < 0 or choice_index >= num_choices:
             raise ValueError("Out-of-range")
-
 
         # Compile benchmark with given optimization
         opt = self._action_space.choice[0].named_discrete_space.value[choice_index]
@@ -214,16 +256,21 @@ class HPCToolkitCompilationSession(CompilationSession):
 
         if observation_space.name == "runtime":
             print("get_observation: runtime")
-            # pdb.set_trace()
+            pdb.set_trace()
 
             # TODO: add documentation that benchmarks need print out execution time
             # Running 5 times and taking the average of middle 3
             exec_times = []
+            print("I need to run this: ", self.run_c)
+            # For some reason, we need to change pwd when runnin cbench data sets
+            if self._running_cbench:
+                os.chdir(self.working_dir)
             for _ in range(5):
                 stdout = run_command(
                     self.run_c,
                     timeout=30,
                 )
+                print("**************** Helloooooooooooooooooooo ", stdout)
                 print(stdout)
                 try:
                     exec_times.append(int(stdout))
@@ -240,33 +287,33 @@ class HPCToolkitCompilationSession(CompilationSession):
             return Observation(scalar_double=avg_exec_time)
 
         elif observation_space.name == "hpctoolkit":
-            print("get_observation: hpctoolkit")
-            print("\n", self.working_dir, "\n")
-
-
-            hpctoolkit_cmd = [
-                ["rm", "-rf", self._exe_struct_path, self.working_dir/"m", self.working_dir/"db"],
-                ["hpcrun", "-e", "REALTIME@100", "-o", self.working_dir/"m", self._exe_path],
-                ["hpcstruct", "-o", self._exe_struct_path, self._exe_path],
-                ["hpcprof-mpi", "-o", self.working_dir/"db", "--metric-db", "yes", "-S", self._exe_struct_path, self.working_dir/"m"]
-            ]
-            
-            for cmd in hpctoolkit_cmd:
-                print(cmd)
-                # pdb.set_trace()
-
-                run_command(
-                    cmd,
-                    timeout=30,
-                )
-
-            # pdb.set_trace()
-
-            gf = parseHPCToolkit(str(self.working_dir/"db"))          
-            addInstStrToDataframe(gf, self._llvm_path)
-
-            pickled = pickle.dumps(gf)
-            return Observation(binary_value=pickled)
+            # print("get_observation: hpctoolkit")
+            # print("\n", self.working_dir, "\n")
+            #
+            #
+            # hpctoolkit_cmd = [
+            #     ["rm", "-rf", self._exe_struct_path, self.working_dir/"m", self.working_dir/"db"],
+            #     ["hpcrun", "-e", "REALTIME@100", "-o", self.working_dir/"m", self._exe_path],
+            #     ["hpcstruct", "-o", self._exe_struct_path, self._exe_path],
+            #     ["hpcprof", "-o", self.working_dir/"db", "--metric-db", "yes", "-S", self._exe_struct_path, self.working_dir/"m"]
+            # ]
+            #
+            # for cmd in hpctoolkit_cmd:
+            #     print(cmd)
+            #     # pdb.set_trace()
+            #
+            #     run_command(
+            #         cmd,
+            #         timeout=30,
+            #     )
+            #
+            # # pdb.set_trace()
+            #
+            # gf = parseHPCToolkit(str(self.working_dir/"db"))
+            # addInstStrToDataframe(gf, self._llvm_path)
+            #
+            # pickled = pickle.dumps(gf)
+            return Observation(1)
 
         else:
             raise KeyError(observation_space.name)
