@@ -19,6 +19,10 @@ import hatchet as ht
 import numpy as np
 import utils
 
+import programl as pg
+
+
+
 import compiler_gym.third_party.llvm as llvm
 from compiler_gym.service import CompilationSession
 from compiler_gym.service.proto import (
@@ -83,6 +87,7 @@ class HPCToolkitCompilationSession(CompilationSession):
                             "-O0",
                             "-O1",
                             "-O2",
+                            "-O3",
                         ],
                     ),
                 )
@@ -93,6 +98,12 @@ class HPCToolkitCompilationSession(CompilationSession):
     # A list of observation spaces supported by this service. Each of these
     # ObservationSpace protos describes an observation space.
     observation_spaces = [
+        ObservationSpace(
+            name="programl",
+            binary_size_range=ScalarRange(
+                min=ScalarLimit(value=0), max=ScalarLimit(value=1e5)
+            ),
+        ), 
         ObservationSpace(
             name="runtime",
             scalar_double_range=ScalarRange(min=ScalarLimit(value=0)),
@@ -107,7 +118,7 @@ class HPCToolkitCompilationSession(CompilationSession):
             binary_size_range=ScalarRange(
                 min=ScalarLimit(value=0), max=ScalarLimit(value=1e5)
             ),
-        ),
+        ),       
     ]
 
     def __init__(
@@ -175,6 +186,10 @@ class HPCToolkitCompilationSession(CompilationSession):
 
         print(self.compile_c)
 
+        print("\n", self.working_dir, "\n")
+        pdb.set_trace()
+
+
     def apply_action(self, action: Action) -> Tuple[bool, Optional[ActionSpace], bool]:
 
         num_choices = len(self.action_spaces[0].choice[0].named_discrete_space.value)
@@ -214,6 +229,7 @@ class HPCToolkitCompilationSession(CompilationSession):
 
         if observation_space.name == "runtime":
             print("get_observation: runtime")
+            return Observation(scalar_double=0)
             # pdb.set_trace()
 
             # TODO: add documentation that benchmarks need print out execution time
@@ -246,27 +262,43 @@ class HPCToolkitCompilationSession(CompilationSession):
 
             hpctoolkit_cmd = [
                 ["rm", "-rf", self._exe_struct_path, self.working_dir/"m", self.working_dir/"db"],
-                ["hpcrun", "-e", "REALTIME@100", "-o", self.working_dir/"m", self._exe_path],
+                ["hpcrun", "-e", "REALTIME@100","-t", "-o", self.working_dir/"m", self._exe_path],
                 ["hpcstruct", "-o", self._exe_struct_path, self._exe_path],
                 ["hpcprof-mpi", "-o", self.working_dir/"db", "--metric-db", "yes", "-S", self._exe_struct_path, self.working_dir/"m"]
             ]
             
             for cmd in hpctoolkit_cmd:
                 print(cmd)
-                # pdb.set_trace()
 
                 run_command(
                     cmd,
                     timeout=30,
                 )
 
-            # pdb.set_trace()
 
             gf = parseHPCToolkit(str(self.working_dir/"db"))          
             addInstStrToDataframe(gf, self._llvm_path)
 
             pickled = pickle.dumps(gf)
             return Observation(binary_value=pickled)
+
+        elif "programl":
+
+            with open(self._src_path, "r") as f:
+                code_str = f.read().rstrip()
+
+                G = pg.from_cpp(code_str)
+                G = pg.to_networkx(G)
+                
+                # for node in G.adjacency():
+                for n_id in G.nodes():
+                    node = G.nodes[n_id]
+                    ll_str = node['features']['full_text'][0] if 'features' in node else "No features"
+                    print(node)
+                    # print('ll_str = ', ll_str)
+                    pdb.set_trace()
+
+            return 0
 
         else:
             raise KeyError(observation_space.name)

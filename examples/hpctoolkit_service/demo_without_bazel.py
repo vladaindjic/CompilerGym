@@ -45,6 +45,35 @@ HPCTOOLKIT_HEADER: Path = Path(
     "/home/dx4/tools/CompilerGym/compiler_gym/third_party/hpctoolkit/header.h"
 )
 
+class ProgramlReward(Reward):
+    """An example reward that uses changes in the "runtime" observation value
+    to compute incremental reward.
+    """
+
+    def __init__(self):
+        super().__init__(
+            id="programl",
+            observation_spaces=["programl"],
+            default_value=0,
+            default_negates_returns=True,
+            deterministic=False,
+            platform_dependent=True,
+        )
+        self.baseline_runtime = 0
+
+    def reset(self, benchmark: str, observation_view):
+        print("Reward Runtime: reset")
+        del benchmark  # unused
+        self.baseline_runtime = observation_view["runtime"]
+
+    def update(self, action, observations, observation_view):
+        print("Reward Runtime: update")
+        del action
+        del observation_view
+        return 0 #float(self.baseline_runtime - observations[0]) / self.baseline_runtime
+
+
+
 
 class RuntimeReward(Reward):
     """An example reward that uses changes in the "runtime" observation value
@@ -119,18 +148,6 @@ class HPCToolkitDataset(Dataset):
             description="HPCToolkit cpu dataset",
             site_data_base=site_data_path("example_dataset"),
         )
-
-        # self._benchmarks = {
-        #     "benchmark://hpctoolkit-cpu-v0/offsets1": Benchmark.from_file(
-        #         "benchmark://hpctoolkit-cpu-v0/offsets1",
-        #         BENCHMARKS_PATH + "/offsets1.c",
-        #     ),
-        #     "benchmark://hpctoolkit-cpu-v0/conv2d": Benchmark.from_file(
-        #         "benchmark://hpctoolkit-cpu-v0/conv2d",
-        #         BENCHMARKS_PATH + "/conv2d.c",
-        #     ),
-        # }
-
         self._benchmarks = {
             "benchmark://hpctoolkit-cpu-v0/conv2d": Benchmark.from_file_contents(
                 "benchmark://hpctoolkit-cpu-v0/conv2d",
@@ -177,6 +194,10 @@ class HPCToolkitDataset(Dataset):
         else:
             raise LookupError("Unknown program name")
 
+    # def benchmark_from_parsed_uri(self, uri: BenchmarkUri) -> Benchmark:
+    #     # TODO: IMPORTANT
+    #     return self.benchmark(str(uri))            
+
 
 # Register the environment for use with gym.make(...).
 register(
@@ -184,7 +205,7 @@ register(
     entry_point="compiler_gym.envs:CompilerEnv",
     kwargs={
         "service": HPCTOOLKIT_PY_SERVICE_BINARY,
-        "rewards": [RuntimeReward(), HPCToolkitReward()],
+        "rewards": [ ProgramlReward(), RuntimeReward(), HPCToolkitReward()],
         "datasets": [HPCToolkitDataset()],
     },
 )
@@ -196,24 +217,24 @@ def main():
 
     # Create the environment using the regular gym.make(...) interface.
     with gym.make("hpctoolkit-llvm-v0") as env:
-        env.reset()
+        # env.reset()
         # env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/offsets1")
-        # env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/conv2d")
-        env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/nanosleep")
+        env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/conv2d")
+        # env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/nanosleep")
 
         for i in range(2):
             print("Main: step = ", i)
             observation, reward, done, info = env.step(
-                action=env.action_space.sample(),
-                observations=["hpctoolkit"],
-                rewards=["hpctoolkit"],
+                action=3,#env.action_space.sample(),
+                observations=["programl"],
+                rewards=["programl"],
             )
             print(reward)
             # print(observation)
             print(info)
             gf = pickle.loads(observation[0])
             print(gf.tree(metric_column=reward_metric))
-            print(gf.dataframe[["line", "llvm_inst"]])
+            print(gf.dataframe[[reward_metric, "line", "llvm_inst"]])
 
             pdb.set_trace()
             if done:
