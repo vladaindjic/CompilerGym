@@ -229,5 +229,20 @@ def main():
                 env.reset()
 
 
+def just_a_tmp():
+    with gym.make("llvm-v0") as env:
+        print(type(env))
+        env.reset()
+        observation, reward, done, info = env.step(0)
+        g = env.observation["Programl"]
+        num_nodes = g.number_of_nodes()
+        print(g)
+        print(num_nodes)
+        node = g.nodes[100]
+        node["features"]["runtime"] = 33
+        print(node["features"])
+
+
 if __name__ == "__main__":
-    main()
+    just_a_tmp()
+    # main()
