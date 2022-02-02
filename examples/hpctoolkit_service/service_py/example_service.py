@@ -143,6 +143,10 @@ class HPCToolkitCompilationSession(CompilationSession):
 
         self._running_cbench = False
 
+        if "benchmark://cbench-v1" in str(benchmark.uri):
+            print("Dynamic config")
+            print(benchmark.dynamic_config)
+
         if benchmark.program.contents.startswith(b'BC'):
             self._running_cbench = True
             # write bitcode representation
@@ -273,7 +277,8 @@ class HPCToolkitCompilationSession(CompilationSession):
                 print("**************** Helloooooooooooooooooooo ", stdout)
                 print(stdout)
                 try:
-                    exec_times.append(int(stdout))
+                    # exec_times.append(int(stdout))
+                    exec_times.append(10)
                 except ValueError:
                     raise ValueError(
                         f"Error in parsing execution time from output of command\n"

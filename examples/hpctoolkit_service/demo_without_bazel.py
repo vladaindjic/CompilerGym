@@ -190,8 +190,8 @@ register(
         "service": HPCTOOLKIT_PY_SERVICE_BINARY,
         # "rewards": [RuntimeReward(), HPCToolkitReward()],
         "rewards": [RuntimeReward()],
-        # "datasets": [HPCToolkitDataset(), CBenchLegacyDataset2(site_data_path("llvm-v0"))],
-        "datasets": [HPCToolkitDataset()],
+        "datasets": [HPCToolkitDataset(), CBenchDataset(site_data_path("llvm-v0"))],
+        # "datasets": [HPCToolkitDataset()],
     },
 )
 
@@ -207,8 +207,8 @@ def main():
         # env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/offsets1")
         # env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/conv2d")
         # pdb.set_trace()
-        env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/nanosleep")
-        # env.reset(benchmark="benchmark://cbench-v1/qsort")
+        # env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/nanosleep")
+        env.reset(benchmark="benchmark://cbench-v1/qsort")
 
         for i in range(2):
             print("Main: step = ", i)
