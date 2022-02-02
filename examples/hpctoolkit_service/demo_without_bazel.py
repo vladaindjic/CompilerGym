@@ -244,5 +244,5 @@ def just_a_tmp():
 
 
 if __name__ == "__main__":
-    just_a_tmp()
-    # main()
+    # just_a_tmp()
+    main()
