@@ -35,7 +35,27 @@ from compiler_gym.service.proto import (
     ScalarRangeList,
 )
 from compiler_gym.service.runtime import create_and_run_compiler_gym_service
-from compiler_gym.util.commands import run_command
+from compiler_gym.util.commands import run_command, Popen
+
+
+def run_command_stdout_redirect(cmd: List[str], timeout: int, output_file):
+    with Popen(
+        cmd, stdout=output_file, stderr=subprocess.PIPE, universal_newlines=True
+    ) as process:
+        stdout, stderr = process.communicate(timeout=timeout)
+        if process.returncode:
+            returncode = process.returncode
+            try:
+                # Try and decode the name of a signal. Signal returncodes
+                # are negative.
+                returncode = f"{returncode} ({Signals(abs(returncode)).name})"
+            except ValueError:
+                pass
+            raise OSError(
+                f"Compilation job failed with returncode {returncode}\n"
+                f"Command: {' '.join(cmd)}\n"
+                f"Stderr: {stderr.strip()}"
+            )
 
 
 def parseHPCToolkit(db_path: str) -> ht.GraphFrame:
@@ -111,12 +131,132 @@ class HPCToolkitCompilationSession(CompilationSession):
         ),
     ]
 
+    def proto_buff_container_to_list(self, container):
+        # Copy proto buff container to python list.
+        compile_cmd = [el for el in container]
+        # NOTE: if run_command function can work with proto buf containers,
+        # then generating the list can be omitted. Uncomment the following statement instead.
+        # compile_cmd = build_cmd.argument
+        return compile_cmd
+
+    def prepare_build_cmd(self, build_cmd):
+        """
+        build_cmd is in the following format.
+        build_cmd {
+          argument: "$CC"
+          argument: "$IN"
+          argument: "-lm"
+          timeout_seconds: 60
+          outfile: "a.out"
+        }
+        Only argument list with the following form: ["$CC", "$IN", "-lm"] is processed.
+        """
+        compile_cmd = self.proto_buff_container_to_list(build_cmd.argument)
+        # Just for the debugging purposes.
+        assert compile_cmd[0] == "$CC"
+        assert compile_cmd[1] == "$IN"
+        # Replace $CC with the llvm_clang.
+        compile_cmd[0] = self._clang
+        # Replace $IN with path to the .bc files
+        compile_cmd[1] = self._bc_path
+        # Append the output file of the compile command.
+        compile_cmd.extend(["-o", self._exe_path])
+        # Add the last compile command.
+        self.compile_c.append(compile_cmd)
+
+    def prepare_pre_run_cmd(self, pre_run_cmd):
+        """
+        pre_run_cmd is in the following format
+        pre_run_cmd {
+          argument: "echo"
+          argument: "1"
+          argument: ">_finfo_dataset"
+          timeout_seconds: 30
+        }
+        Only argument is considered for now.
+        """
+        pre_run_cmd = self.proto_buff_container_to_list(pre_run_cmd.argument)
+        # append pre_run_cmd list to the pre_run
+        self.pre_run.append(pre_run_cmd)
+
+    def pre_run_cmd_with_redirection(self, cmd):
+        """
+        Pre run command might redirect the stdout to a file.
+        Try to recignize this.
+        """
+        # FIXME: This function assumes that the last argument may contain the files
+        #   to which the stdout should be redirected.
+        if cmd[-1].startswith('>'):
+            # Remove '>' from file name and prepend working_dir path
+            file_path = self.working_dir / cmd[-1][1:]
+            with open(file_path, 'w') as f:
+                # Remove the stdout redirection from the cmd.
+                cmd = cmd[:-1]
+                run_command_stdout_redirect(cmd, timeout=30, output_file=f)
+        else:
+            # Execute the command with no redirection
+            run_command(cmd, timeout=30)
+
+    def prepare_run_cmd(self, run_cmd):
+        """
+        run_cmd is in the following format:
+        run_cmd {
+          argument: "./a.out"
+          argument: "/home/vi3/.local/share/compiler_gym/llvm-v0/cbench-v1-runtime-data/runtime_data/automotive_qsort_data/1.dat"
+          timeout_seconds: 300
+          infile: "a.out"
+          infile: "_finfo_dataset"
+          outfile: "sorted_output.dat"
+        }
+        Only argument is considered for now.
+        """
+        print("________ Run command: \n", run_cmd)
+        run_cmd = self.proto_buff_container_to_list(run_cmd.argument)
+
+        # Just for the debugging purposes.
+        assert run_cmd[0] == './a.out'
+        # Replace ./a.out with the _exe_path
+        run_cmd[0] = self._exe_path
+        self.run_c = run_cmd
+
+    def prepare_cbench(self, benchmark: Benchmark):
+        self._running_cbench = True
+        # Extract build command.
+        self.prepare_build_cmd(benchmark.dynamic_config.build_cmd)
+        # Extract all pre run commands
+        for cmd in benchmark.dynamic_config.pre_run_cmd:
+            self.prepare_pre_run_cmd(cmd)
+        # Extract run command.
+        self.prepare_run_cmd(benchmark.dynamic_config.run_cmd)
+
+    def prepare_bitcode_bench(self, benchmark: Benchmark):
+        print(benchmark.uri)
+        # Dump downloaded .bc file.
+        with open(self._bc_download_path, 'wb') as f:
+            f.write(benchmark.program.contents)
+        # Command that converts .bc to .ll
+        self.compile_c.append(
+            [self._llvm_dis, "-o", self._llvm_path, self._bc_download_path],
+        )
+        # Command that applies opt with --debugify argument.
+        self.compile_c.append(
+            [self._opt, "--debugify", "-o", self._bc_path, self._llvm_path],
+        )
+        if "benchmark://cbench-v1" in str(benchmark.uri):
+            # Extract compile and exec command dedicated to the benchmakr itself.
+            self.prepare_cbench(benchmark)
+
+    def prepare_bench(self, benchmark: Benchmark):
+        print(benchmark.uri)
+        if benchmark.program.contents.startswith(b'BC'):
+            self.prepare_bitcode_bench(benchmark)
+
     def __init__(
-        self,
-        working_directory: Path,
-        action_space: ActionSpace,
-        benchmark: Benchmark,  # TODO: Dejan use Benchmark rather than hardcoding benchmark path here!
-        # use_custom_opt: bool = True,
+            self,
+            working_directory: Path,
+            action_space: ActionSpace,
+            benchmark: Benchmark,  # TODO: Dejan use Benchmark rather than hardcoding benchmark path here!
+            # use_custom_opt: bool = True,
     ):
         super().__init__(working_directory, action_space, benchmark)
         logging.info("Started a compilation session for %s", benchmark.uri)
@@ -138,51 +278,17 @@ class HPCToolkitCompilationSession(CompilationSession):
         self._exe_path = str(self.working_dir / "benchmark.exe")
         self._exe_struct_path = self._exe_path + ".hpcstruct"
 
-        # Dump the benchmark source to disk.
-        self._src_path = str(self.working_dir / "benchmark.c")
+        self.compile_c = []
+        self.pre_run = []
+        self.run_c = None
 
         self._running_cbench = False
 
-        if "benchmark://cbench-v1" in str(benchmark.uri):
-            print("Dynamic config")
-            print(benchmark.dynamic_config)
-
         if benchmark.program.contents.startswith(b'BC'):
-            self._running_cbench = True
-            # write bitcode representation
-            with open(self._bc_download_path, 'wb') as f:
-                f.write(benchmark.program.contents)
-            # generate .ll from .bc (bitcode) by using llvm-dis
-            self.compile_c = [
-                [self._llvm_dis, "-o", self._llvm_path, self._bc_download_path],
-                [self._opt, "--debugify", "-o", self._bc_path, self._llvm_path],
-                # for qsort, we need to link math library
-                # FIXME: This is hardcoded for cbench-v1/qsort.
-                [self._clang, self._bc_path, "-o", self._exe_path, '-lm']
-            ]
-            # FIXME: This is hardcoded for cbench-v1/qsort.
-            # data for qsort
-            qsort_input_data = site_data_path("llvm-v0/cbench-v1-runtime-data/runtime_data") / "automotive_qsort_data" / "1.dat"
-            qsort_output_data = self.working_dir / "sourted_output.dat"
-            self.run_c = [self._exe_path, str(qsort_input_data), str(qsort_output_data)]
-            # cBench benchmarks expect that a file _finfo_dataset exists in the
-            # current working directory and contains the number of benchmark
-            # iterations in it.
-            with open(self.working_dir / "_finfo_dataset", "w") as f:
-                print(1, file=f)
-
-            # For more info how to run other benchmarks, see this.
-            # from compiler_gym.envs.llvm.datasets.cbench import validator
-            # pdb.set_trace()
-            # validator(
-            #     benchmark="benchmark://cbench-v1/qsort",
-            #     cmd=f"$BIN $D/automotive_qsort_data/1.dat",
-            #     data=[f"automotive_qsort_data/1.dat"],
-            #     outs=["sorted_output.dat"],
-            #     linkopts=["-lm"],
-            # )
-
+            self.prepare_bench(benchmark)
         else:
+            # Dump the benchmark source to disk.
+            self._src_path = str(self.working_dir / "benchmark.c")
             with open(self.working_dir / "benchmark.c", "wb") as f:
                 f.write(benchmark.program.contents)
             # generate .ll from .c (source code)
@@ -211,15 +317,17 @@ class HPCToolkitCompilationSession(CompilationSession):
             print("Action space is doesn't exits: ", action_space)
             exit
 
-        pdb.set_trace()
         # Compile baseline at the beginning
-        for cmd in self.compile_c_base:            
+        for cmd in self.compile_c_base:
             run_command(
                 cmd,
                 timeout=30,
             )
-            
-        pdb.set_trace()
+
+        for cmd in self.pre_run:
+            # The stdout may be redirected to a file.
+            self.pre_run_cmd_with_redirection(cmd)
+
         print(self.compile_c)
 
     def apply_action(self, action: Action) -> Tuple[bool, Optional[ActionSpace], bool]:
@@ -241,7 +349,10 @@ class HPCToolkitCompilationSession(CompilationSession):
             opt,
         )
 
-        self.compile_c[0].insert(1, opt)
+        # FIXME vi3: see to which compile command "opt" should be applied.
+        #  The following line assumes that the first command compiles .c to .ll,
+        #  which is not the case if the benchmark is in .bc format.
+        # self.compile_c[0].insert(1, opt)
         for cmd in self.compile_c:
             run_command(
                 cmd,
@@ -260,7 +371,6 @@ class HPCToolkitCompilationSession(CompilationSession):
 
         if observation_space.name == "runtime":
             print("get_observation: runtime")
-            pdb.set_trace()
 
             # TODO: add documentation that benchmarks need print out execution time
             # Running 5 times and taking the average of middle 3
@@ -274,8 +384,12 @@ class HPCToolkitCompilationSession(CompilationSession):
                     self.run_c,
                     timeout=30,
                 )
-                print("**************** Helloooooooooooooooooooo ", stdout)
-                print(stdout)
+
+                print(">>> The stdout of the run with the size:", len(stdout))
+                max_out = len(stdout) if len(stdout) < 100 else 100
+                if max_out > 0:
+                    print(">>> Showing some stdout\n", stdout[:100])
+                # pdb.set_trace()
                 try:
                     # exec_times.append(int(stdout))
                     exec_times.append(10)

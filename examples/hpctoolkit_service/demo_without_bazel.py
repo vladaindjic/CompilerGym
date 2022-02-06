@@ -202,31 +202,58 @@ def main():
 
     # Create the environment using the regular gym.make(...) interface.
     with gym.make("hpctoolkit-llvm-v0") as env:
-        # pdb.set_trace()
-        # env.reset()
-        # env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/offsets1")
-        # env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/conv2d")
-        # pdb.set_trace()
-        # env.reset(benchmark="benchmark://hpctoolkit-cpu-v0/nanosleep")
-        env.reset(benchmark="benchmark://cbench-v1/qsort")
 
-        for i in range(2):
-            print("Main: step = ", i)
-            observation, reward, done, info = env.step(
-                action=env.action_space.sample(),
-                observations=["runtime"],
-                rewards=["runtime"],
-            )
-            print(reward)
-            # print(observation)
-            print(info)
-            # gf = pickle.loads(observation[0])
-            # print(gf.tree(metric_column=reward_metric))
-            # print(gf.dataframe[["line", "llvm_inst"]])
+        # env.reset(benchmark="benchmark://cbench-v1/qsort")
 
-            # pdb.set_trace()
-            if done:
-                env.reset()
+        benchmark_to_process = [
+            # from benchmarks directory
+            # "benchmark://hpctoolkit-cpu-v0/offsets1",
+            # "benchmark://hpctoolkit-cpu-v0/conv2d",
+            # "benchmark://hpctoolkit-cpu-v0/nanosleep",
+
+            # cbench-v1
+            "benchmark://cbench-v1/bitcount",
+            "benchmark://cbench-v1/qsort",
+            "benchmark://cbench-v1/blowfish",
+            "benchmark://cbench-v1/bzip2",
+            "benchmark://cbench-v1/crc32",
+            "benchmark://cbench-v1/dijkstra",
+            # "benchmark://cbench-v1/gsm",                # FIXME: ValueError: 'utf-8' codec can't decode byte 0xcb in position 2: invalid continuation byte
+            "benchmark://cbench-v1/jpeg-c",
+            "benchmark://cbench-v1/jpeg-d",
+            "benchmark://cbench-v1/patricia",
+            "benchmark://cbench-v1/sha",
+            "benchmark://cbench-v1/stringsearch",
+            "benchmark://cbench-v1/susan",
+            "benchmark://cbench-v1/tiff2bw",
+            "benchmark://cbench-v1/tiff2rgba",
+            "benchmark://cbench-v1/tiffdither",
+            "benchmark://cbench-v1/tiffmedian",
+        ]
+
+        inc = 0
+        for bench in benchmark_to_process:
+            env.reset(benchmark=bench)
+
+            for i in range(2):
+                print("Main: step = ", i)
+                observation, reward, done, info = env.step(
+                    action=env.action_space.sample(),
+                    observations=["runtime"],
+                    rewards=["runtime"],
+                )
+                print(reward)
+                # print(observation)
+                print(info)
+                # gf = pickle.loads(observation[0])
+                # print(gf.tree(metric_column=reward_metric))
+                # print(gf.dataframe[["line", "llvm_inst"]])
+
+                # pdb.set_trace()
+                if done:
+                    env.reset()
+            inc += 1
+        print("I run %d benchmarks." % inc)
 
 
 def just_a_tmp():
