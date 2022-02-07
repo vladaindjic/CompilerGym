@@ -21,7 +21,7 @@ import gym
 import hatchet as ht
 
 from compiler_gym.datasets import Benchmark, Dataset, BenchmarkUri
-from compiler_gym.envs.llvm.datasets import CBenchDataset, CBenchLegacyDataset2, CBenchLegacyDataset
+from compiler_gym.envs.llvm.datasets import CBenchDataset, CBenchLegacyDataset2, CBenchLegacyDataset, CsmithDataset
 from compiler_gym.envs.llvm.llvm_benchmark import get_system_includes
 from compiler_gym.spaces import Reward
 from compiler_gym.third_party import llvm
@@ -190,7 +190,8 @@ register(
         "service": HPCTOOLKIT_PY_SERVICE_BINARY,
         # "rewards": [RuntimeReward(), HPCToolkitReward()],
         "rewards": [RuntimeReward()],
-        "datasets": [HPCToolkitDataset(), CBenchDataset(site_data_path("llvm-v0"))],
+        "datasets": [HPCToolkitDataset(), CBenchDataset(site_data_path("llvm-v0")),
+                     CsmithDataset(site_data_path("llvm-v0"), sort_order=0)],
         # "datasets": [HPCToolkitDataset()],
     },
 )
@@ -229,6 +230,16 @@ def main():
             "benchmark://cbench-v1/tiff2rgba",
             "benchmark://cbench-v1/tiffdither",
             "benchmark://cbench-v1/tiffmedian",
+
+            # csmith
+            "generator://csmith-v0/0",
+            "generator://csmith-v0/1",
+            "generator://csmith-v0/2",
+            # ...
+            # The number represents the seed which needs to be less than or equal to UINT_MAX = (2 ** 32) - 1
+            "generator://csmith-v0/23",
+            "generator://csmith-v0/33",
+            "generator://csmith-v0/1123",
         ]
 
         inc = 0

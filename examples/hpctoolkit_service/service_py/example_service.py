@@ -229,6 +229,15 @@ class HPCToolkitCompilationSession(CompilationSession):
         # Extract run command.
         self.prepare_run_cmd(benchmark.dynamic_config.run_cmd)
 
+    def prepare_csmith(self, benchmark: Benchmark):
+        # Extract build command.
+        self.prepare_build_cmd(benchmark.dynamic_config.build_cmd)
+        # Pre run command should not exist.
+        # Just for the debugging purposes.
+        assert len(benchmark.dynamic_config.pre_run_cmd) == 0
+        # Extract run command.
+        self.prepare_run_cmd(benchmark.dynamic_config.run_cmd)
+
     def prepare_bitcode_bench(self, benchmark: Benchmark):
         print(benchmark.uri)
         # Dump downloaded .bc file.
@@ -245,8 +254,11 @@ class HPCToolkitCompilationSession(CompilationSession):
         if "benchmark://cbench-v1" in str(benchmark.uri):
             # Extract compile and exec command dedicated to the benchmakr itself.
             self.prepare_cbench(benchmark)
+        elif "generator://csmith-v0" in str(benchmark.uri):
+            self.prepare_csmith(benchmark)
 
     def prepare_bench(self, benchmark: Benchmark):
+        # pdb.set_trace()
         print(benchmark.uri)
         if benchmark.program.contents.startswith(b'BC'):
             self.prepare_bitcode_bench(benchmark)
