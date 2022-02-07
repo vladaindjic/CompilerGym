@@ -21,7 +21,8 @@ import gym
 import hatchet as ht
 
 from compiler_gym.datasets import Benchmark, Dataset, BenchmarkUri
-from compiler_gym.envs.llvm.datasets import CBenchDataset, CBenchLegacyDataset2, CBenchLegacyDataset, CsmithDataset
+from compiler_gym.envs.llvm.datasets import CBenchDataset, CBenchLegacyDataset2, CBenchLegacyDataset, CsmithDataset, \
+    NPBDataset, BlasDataset, AnghaBenchDataset, CHStoneDataset
 from compiler_gym.envs.llvm.llvm_benchmark import get_system_includes
 from compiler_gym.spaces import Reward
 from compiler_gym.third_party import llvm
@@ -191,7 +192,12 @@ register(
         # "rewards": [RuntimeReward(), HPCToolkitReward()],
         "rewards": [RuntimeReward()],
         "datasets": [HPCToolkitDataset(), CBenchDataset(site_data_path("llvm-v0")),
-                     CsmithDataset(site_data_path("llvm-v0"), sort_order=0)],
+                     CsmithDataset(site_data_path("llvm-v0"), sort_order=0),
+                     NPBDataset(site_data_path("llvm-v0"), sort_order=0),
+                     BlasDataset(site_data_path("llvm-v0"), sort_order=0),
+                     AnghaBenchDataset(site_data_path("llvm-v0"), sort_order=0),
+                     CHStoneDataset(site_data_path("llvm-v0"), sort_order=0),
+                     ],
         # "datasets": [HPCToolkitDataset()],
     },
 )
@@ -240,6 +246,53 @@ def main():
             "generator://csmith-v0/23",
             "generator://csmith-v0/33",
             "generator://csmith-v0/1123",
+
+            # ===========================
+            # npb
+            # "benchmark://npb-v0/3"
+            # warning: overriding the module target triple with x86_64-unknown-linux-gnu [-Woverride-module]
+            # 1 warning generated.
+            # /usr/lib/gcc/x86_64-redhat-linux/8/../../../../lib64/crt1.o: In function `_start':
+            # (.text+0x24): undefined reference to `main'
+            # clang-12: error: linker command failed with exit code 1 (use -v to see invocation
+            # ====================================
+            #
+
+            # ====================================
+            # "benchmark://blas-v0/1",
+            # blas
+            # /usr/lib/gcc/x86_64-redhat-linux/8/../../../../lib64/crt1.o: In function `_start':
+            # (.text+0x24): undefined reference to `main'
+            # /tmp/benchmark-21b6f1.o: In function `dtbsv_':
+            # /home/shoshijak/Documents/blas_ir/BLAS-3.8.0/dtbsv.f:230: undefined reference to `lsame_'
+            # /home/shoshijak/Documents/blas_ir/BLAS-3.8.0/dtbsv.f:230: undefined reference to `lsame_'
+            # /home/shoshijak/Documents/blas_ir/BLAS-3.8.0/dtbsv.f:232: undefined reference to `lsame_'
+            # /home/shoshijak/Documents/blas_ir/BLAS-3.8.0/dtbsv.f:232: undefined reference to `lsame_'
+            # /home/shoshijak/Documents/blas_ir/BLAS-3.8.0/dtbsv.f:232: undefined reference to `lsame_'
+            # ====================================
+
+            # ====================================
+            # Maybe we could access to the .c code directly.
+            # "benchmark://anghabench-v1/8cc/extr_buffer.c_buf_append"
+            # /usr/lib/gcc/x86_64-redhat-linux/8/../../../../lib64/crt1.o: In function `_start':
+            # (.text+0x24): undefined reference to `main'
+            # /tmp/benchmark-downloaded-36dcc2.o: In function `buf_append':
+            # extr_buffer.c_buf_append.c:(.text+0x3e): undefined reference to `buf_write'
+            # ====================================
+
+            # chstone seems to work (.c is present)
+            "benchmark://chstone-v0/adpcm",
+            "benchmark://chstone-v0/aes",
+            "benchmark://chstone-v0/blowfish",
+            "benchmark://chstone-v0/dfadd",
+            "benchmark://chstone-v0/dfdiv",
+            "benchmark://chstone-v0/dfmul",
+            "benchmark://chstone-v0/dfsin",
+            "benchmark://chstone-v0/gsm",
+            "benchmark://chstone-v0/jpeg",
+            "benchmark://chstone-v0/mips",
+            "benchmark://chstone-v0/motion",
+            "benchmark://chstone-v0/sha",
         ]
 
         inc = 0

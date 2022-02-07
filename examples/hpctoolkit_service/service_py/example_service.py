@@ -238,6 +238,18 @@ class HPCToolkitCompilationSession(CompilationSession):
         # Extract run command.
         self.prepare_run_cmd(benchmark.dynamic_config.run_cmd)
 
+    def prepare_other_bench(self, benchmark: Benchmark):
+        # Compile the .bc to executable.
+        self.compile_c.append([
+            self._clang,
+            self._bc_path,
+            "-o", self._exe_path,
+            # "-lm",
+            # "-nostartfiles"
+        ])
+        # Run with no additional arguments.
+        self.run_c = [self._exe_path]
+
     def prepare_bitcode_bench(self, benchmark: Benchmark):
         print(benchmark.uri)
         # Dump downloaded .bc file.
@@ -256,6 +268,8 @@ class HPCToolkitCompilationSession(CompilationSession):
             self.prepare_cbench(benchmark)
         elif "generator://csmith-v0" in str(benchmark.uri):
             self.prepare_csmith(benchmark)
+        else:
+            self.prepare_other_bench(benchmark)
 
     def prepare_bench(self, benchmark: Benchmark):
         # pdb.set_trace()
@@ -329,12 +343,14 @@ class HPCToolkitCompilationSession(CompilationSession):
             print("Action space is doesn't exits: ", action_space)
             exit
 
+        # pdb.set_trace()
         # Compile baseline at the beginning
         for cmd in self.compile_c_base:
             run_command(
                 cmd,
                 timeout=30,
             )
+            # pdb.set_trace()
 
         for cmd in self.pre_run:
             # The stdout may be redirected to a file.
@@ -391,6 +407,7 @@ class HPCToolkitCompilationSession(CompilationSession):
             # For some reason, we need to change pwd when runnin cbench data sets
             if self._running_cbench:
                 os.chdir(self.working_dir)
+            # pdb.set_trace()
             for _ in range(5):
                 stdout = run_command(
                     self.run_c,
