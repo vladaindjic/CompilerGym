@@ -276,6 +276,14 @@ class HPCToolkitCompilationSession(CompilationSession):
         print(benchmark.uri)
         if benchmark.program.contents.startswith(b'BC'):
             self.prepare_bitcode_bench(benchmark)
+        elif "mibench" in str(benchmark.uri):
+            self.prepare_bitcode_bench(benchmark)
+        elif "opencv" in str(benchmark.uri):
+            self.prepare_bitcode_bench(benchmark)
+        elif "tensorflow" in str(benchmark.uri):
+            self.prepare_bitcode_bench(benchmark)
+        else:
+            return -1
 
     def __init__(
             self,
@@ -310,8 +318,9 @@ class HPCToolkitCompilationSession(CompilationSession):
 
         self._running_cbench = False
 
-        if benchmark.program.contents.startswith(b'BC'):
-            self.prepare_bench(benchmark)
+        if self.prepare_bench(benchmark) != -1:
+            # FIXME: just a stupid workaround.
+            pass
         else:
             # Dump the benchmark source to disk.
             self._src_path = str(self.working_dir / "benchmark.c")
